@@ -1,12 +1,23 @@
 # Build outputs
 /bin/
 /dist/
-/build/
 *.exe
 *.exe~
 
+# Wails v3 build output (binaries land here)
+bin/
+build/bin/
+
+# Task runner cache
+.task/
+
 # Preserve NSS certutil binaries for Windows fresh Firefox installs
 !assets/nss/win32/*.exe
+
+# Frontend build output and node_modules
+frontend/dist/
+frontend/node_modules/
+frontend/bindings/
 
 # Test and temp files
 *.test

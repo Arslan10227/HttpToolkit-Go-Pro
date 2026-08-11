@@ -9,10 +9,10 @@ on:
 
 jobs:
   # -------------------------------------------------------------------
-  # Build & test the standalone Go server on multiple OSes.
+  # Test the Go internals on all 3 OSes (no GUI, no frontend build)
   # -------------------------------------------------------------------
-  build:
-    name: Build & Test (${{ matrix.os }})
+  test:
+    name: Test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -50,39 +50,55 @@ jobs:
             echo ")"
           } > internal/config/env_defaults.go
 
-      - name: Build standalone server
-        run: go build -v -o htk-server ./cmd/htk-server
-
-      - name: Build MCP server
-        run: go build -v -o htk-mcp ./cmd/htk-mcp
-
-      - name: Build ctl client
-        run: go build -v -o htk-ctl ./cmd/htk-ctl
-
       - name: Test
         run: go test -v ./...
 
-      - name: Upload binaries
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: htk-binaries-${{ matrix.os }}
-          path: |
-            htk-server
-            htk-server.exe
-            htk-mcp
-            htk-mcp.exe
-            htk-ctl
-            htk-ctl.exe
-          if-no-files-found: ignore
+      - name: Build (verify compilation)
+        run: go build -v .
 
   # -------------------------------------------------------------------
-  # Build the Wails desktop app (Windows only — requires WebView2).
+  # Build the frontend (Vite) — shared across all desktop builds
   # -------------------------------------------------------------------
-  build-wails-windows:
-    name: Wails Desktop (Windows)
-    needs: build
-    runs-on: windows-latest
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # -------------------------------------------------------------------
+  # Build the unified Wails v3 desktop app for all 3 platforms
+  # -------------------------------------------------------------------
+  build-desktop:
+    name: Desktop App (${{ matrix.os }})
+    needs: [test, build-frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: darwin
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +108,18 @@ jobs:
           go-version: '1.26.3'
           cache: true
 
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Generate env_defaults.go from secrets
         shell: bash
@@ -118,12 +144,24 @@ jobs:
             echo ")"
           } > internal/config/env_defaults.go
 
-      - name: Build Wails desktop app
-        run: wails build -platform windows/amd64 -clean
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
 
-      - name: Upload desktop app
+      - name: Generate Wails bindings
+        run: wails3 generate bindings
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Build desktop app
+        run: wails3 build
+
+      - name: Package desktop app
+        run: wails3 package
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HttpToolkit-Pro-Windows-Desktop
-          path: build/bin/HttpToolkit-Pro.exe
+          name: HttpToolkit-Pro-${{ matrix.platform }}
+          path: bin/
           if-no-files-found: warn
