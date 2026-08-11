@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/Arslan10227/HttpToolkit-Go-Pro/internal/backup"
 	"github.com/Arslan10227/HttpToolkit-Go-Pro/internal/config"
@@ -20,6 +19,7 @@ import (
 	"github.com/Arslan10227/HttpToolkit-Go-Pro/internal/settings"
 	"github.com/Arslan10227/HttpToolkit-Go-Pro/internal/system"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -268,9 +268,11 @@ func runDesktopApp() {
 		}
 	}
 
-	// Server startup/shutdown callbacks for the ShellService
+	// Server startup/shutdown callbacks for the ShellService.
+	// shellService is declared first so the startup callback can call SetApp.
 	var serverApp *server.App
-	serverStartup := func() {
+	shellService := NewShellService(cfg, sm, nil, nil)
+	shellService.startup = func() {
 		logger.Info("Starting Go server services asynchronously in background", nil)
 		app, err := server.Run(cfg, sm)
 		if err != nil {
@@ -283,14 +285,13 @@ func runDesktopApp() {
 			"adminPort": cfg.AdminPort,
 		})
 		serverApp = app
+		shellService.SetApp(app)
 	}
-	serverShutdown := func() {
+	shellService.shutdown = func() {
 		if serverApp != nil {
 			serverApp.Shutdown(context.Background())
 		}
 	}
-
-	shellService := NewShellService(cfg, sm, serverStartup, serverShutdown)
 
 	// Sub FS: strip the "frontend/dist/" prefix so Wails serves index.html at /
 	subFS, err := fs.Sub(frontendAssets, "frontend/dist")
@@ -363,15 +364,45 @@ func runDesktopApp() {
 	// Center the window after creation (v3 doesn't have a WindowCentered option)
 	window.Center()
 
-	// Handle startup args after DOM is ready — use a short delay since v3
-	// doesn't have an OnDomReady callback on the app options.
+	// Confirm-before-close: mirror the v2 OnBeforeClose behavior. If the user
+	// has "confirmBeforeClose" enabled, intercept WindowClosing and show a
+	// confirmation dialog. The dialog is shown via a goroutine to avoid
+	// deadlocking InvokeSync on the main thread.
+	var closingConfirmed bool
+	if sm != nil && sm.ConfirmBeforeClose() {
+		window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+			if closingConfirmed {
+				return // allow the close to proceed
+			}
+			event.Cancel()
+			go func() {
+				dialog := application.Get().Dialog.Question().
+					SetTitle("Close HTTP Toolkit?").
+					SetMessage("Are you sure you want to close HTTP Toolkit?")
+				yesBtn := dialog.AddButton("Yes")
+				yesBtn.OnClick(func() { closingConfirmed = true })
+				noBtn := dialog.AddButton("No")
+				noBtn.OnClick(func() {})
+				dialog.SetDefaultButton(noBtn)
+				dialog.SetCancelButton(noBtn)
+				dialog.Show()
+				if closingConfirmed {
+					window.Close()
+				}
+			}()
+		})
+	}
+
+	// Handle startup args after the window runtime is ready (v3 equivalent
+	// of v2's OnDomReady). Using the event ensures the frontend JS event
+	// listeners are registered before we emit, rather than a fragile sleep.
 	if len(startupArgs) > 0 {
-		go func() {
-			time.Sleep(1500 * time.Millisecond)
+		window.OnWindowEvent(events.Common.WindowRuntimeReady, func(event *application.WindowEvent) {
+			logger.Info("WindowRuntimeReady — emitting startup args", nil)
 			for _, arg := range startupArgs {
 				handleStartupArg(arg)
 			}
-		}()
+		})
 	}
 
 	logger.Info("Running Wails v3 application", nil)

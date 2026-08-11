@@ -38,6 +38,12 @@ func NewShellService(cfg *config.Config, sm *settings.Manager, startup, shutdown
 	}
 }
 
+// SetApp is called by main.go after server.Run() succeeds, so that
+// ShutdownServer() can forward the shutdown to the REST API server.
+func (s *ShellService) SetApp(app *server.App) {
+	s.app = app
+}
+
 // ServiceStartup is called by Wails v3 when the application starts.
 // The context is valid for the application's lifetime.
 func (s *ShellService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
