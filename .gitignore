@@ -15,7 +15,8 @@ build/bin/
 !assets/nss/win32/*.exe
 
 # Frontend build output and node_modules
-frontend/dist/
+frontend/dist/*
+!frontend/dist/.gitkeep
 frontend/node_modules/
 frontend/bindings/
 

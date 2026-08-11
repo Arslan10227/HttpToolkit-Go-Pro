@@ -9,7 +9,8 @@ on:
 
 jobs:
   # -------------------------------------------------------------------
-  # Test the Go internals on all 3 OSes (no GUI, no frontend build)
+  # Test the Go internals on all 3 OSes (no GUI, no frontend build needed)
+  # The frontend/dist/.gitkeep placeholder satisfies the //go:embed directive.
   # -------------------------------------------------------------------
   test:
     name: Test (${{ matrix.os }})
@@ -57,37 +58,11 @@ jobs:
         run: go build -v .
 
   # -------------------------------------------------------------------
-  # Build the frontend (Vite) — shared across all desktop builds
-  # -------------------------------------------------------------------
-  build-frontend:
-    name: Build Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install frontend dependencies
-        run: cd frontend && npm ci
-
-      - name: Build frontend
-        run: cd frontend && npm run build
-
-      - name: Upload frontend dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-          retention-days: 1
-
-  # -------------------------------------------------------------------
   # Build the unified Wails v3 desktop app for all 3 platforms
   # -------------------------------------------------------------------
   build-desktop:
     name: Desktop App (${{ matrix.os }})
-    needs: [test, build-frontend]
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -145,7 +120,7 @@ jobs:
           } > internal/config/env_defaults.go
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: cd frontend && npm install
 
       - name: Generate Wails bindings
         run: wails3 generate bindings

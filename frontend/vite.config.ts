@@ -1,9 +1,10 @@
 import { defineConfig } from "vite";
 import wails from "@wailsio/runtime/plugins/vite";
-import { viteStaticCopy } from "vite-plugin-static-copy";
-import { resolve } from "path";
-import { copyFileSync, mkdirSync, readdirSync, existsSync } from "fs";
-import { join } from "path";
+import { resolve, join } from "path";
+import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // Custom plugin to copy the pre-built UI assets and inject the shellApi script
 function copyPrebuiltUI() {
@@ -16,13 +17,13 @@ function copyPrebuiltUI() {
       // Copy index.html with shellApi.js injection
       const indexHtml = join(assetsDir, "index.html");
       if (existsSync(indexHtml)) {
-        const content = require("fs").readFileSync(indexHtml, "utf-8");
+        const content = readFileSync(indexHtml, "utf-8");
         const scriptTag = '<script type="module" src="/shellApi.js"></script>';
         const modified = content.replace(
           '<script type="module" crossorigin src="/assets/index-',
           scriptTag + '\n    <script type="module" crossorigin src="/assets/index-'
         );
-        require("fs").writeFileSync(join(distDir, "index.html"), modified);
+        writeFileSync(join(distDir, "index.html"), modified);
       }
 
       // Copy the assets/assets/ directory (pre-built JS/CSS bundles)
