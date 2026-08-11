@@ -1,0 +1,41 @@
+{
+  "eventNames": [
+    "peer-connected",
+    "peer-disconnected",
+    "external-peer-attached",
+    "data-channel-opened",
+    "data-channel-message-sent",
+    "data-channel-message-received",
+    "data-channel-closed",
+    "media-track-opened",
+    "media-track-stats",
+    "media-track-closed"
+  ],
+  "samples": {
+    "peer-connected": {
+      "id": "rtc-uuid",
+      "peerId": "rtc-uuid",
+      "sessionId": "session-uuid",
+      "timestamp": 1710000000000
+    },
+    "peer-disconnected": {
+      "id": "rtc-uuid",
+      "peerId": "rtc-uuid",
+      "timestamp": 1710000005000
+    },
+    "data-channel-opened": {
+      "id": "channel-uuid",
+      "peerId": "rtc-uuid",
+      "sessionId": "session-uuid",
+      "label": "datachannel",
+      "timestamp": 1710000001000
+    },
+    "media-track-opened": {
+      "id": "track-uuid",
+      "peerId": "rtc-uuid",
+      "sessionId": "session-uuid",
+      "kind": "audio",
+      "timestamp": 1710000002000
+    }
+  }
+}

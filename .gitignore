@@ -1,0 +1,25 @@
+# Build outputs
+/bin/
+/dist/
+/build/
+*.exe
+*.exe~
+
+# Preserve NSS certutil binaries for Windows fresh Firefox installs
+!assets/nss/win32/*.exe
+
+# Test and temp files
+*.test
+*.tmp
+*.log
+
+# Runtime logs
+logs/
+
+# Secrets and runtime config
+.env
+.env.local
+*firebase-service-account*.json
+*service-account*.json
+credentials.json
+internal/config/env_defaults.go

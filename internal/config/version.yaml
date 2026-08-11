@@ -1,0 +1,10 @@
+# version.yaml — Single source of truth for app identity.
+# Edit this file to change the app name, version, title, etc.
+# Go code reads it at build time via go:embed; CI reads it for tagging.
+name: "HttpToolkit Go Pro"
+version: "1.0.0-go"
+title: "Httptoolkit Go (GoLang Version with Pro by Arslan10227)"
+description: "Native Go MITM proxy + Wails desktop shell for HttpToolkit Pro"
+author: "Arslan10227"
+repository: "https://github.com/Arslan10227/HttpToolkit-Go-Pro"
+license: "AGPL-3.0"

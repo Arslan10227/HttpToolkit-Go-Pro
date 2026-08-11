@@ -1,0 +1,1 @@
+import{n as e}from"./errorReporting-C7itArmc.js";import{t}from"./useNotificationStore-80beXspH.js";function n(n,r){let i=`${r}: ${n&&n.message?n.message:String(n)}`;console.error(i),e(n,{domain:`ui`,code:`error_handler`}),t.getState().addNotification(`error`,i)}export{n as t};

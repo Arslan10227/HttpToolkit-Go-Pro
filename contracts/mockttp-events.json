@@ -1,0 +1,44 @@
+{
+  "eventNames": [
+    "request-initiated",
+    "request",
+    "response",
+    "abort",
+    "tls-client-error",
+    "tls-passthrough-opened",
+    "tls-passthrough-closed",
+    "client-error",
+    "raw-passthrough-opened",
+    "raw-passthrough-closed",
+    "rule-event",
+    "websocket-request",
+    "websocket-accepted",
+    "websocket-message-received",
+    "websocket-message-sent",
+    "websocket-close"
+  ],
+  "samples": {
+    "request-initiated": {
+      "id": "req-uuid",
+      "timestamp": 1710000000000,
+      "method": "GET",
+      "url": "https://example.com/path",
+      "headers": { "host": "example.com" }
+    },
+    "request": {
+      "id": "req-uuid",
+      "timestamp": 1710000000001,
+      "method": "GET",
+      "url": "https://example.com/path",
+      "headers": { "host": "example.com" },
+      "body": { "buffer": "base64..." }
+    },
+    "response": {
+      "id": "req-uuid",
+      "timestamp": 1710000000100,
+      "statusCode": 200,
+      "headers": { "content-type": "text/html" },
+      "body": { "buffer": "base64..." }
+    }
+  }
+}

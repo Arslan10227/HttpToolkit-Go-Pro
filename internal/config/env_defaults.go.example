@@ -1,0 +1,22 @@
+package config
+
+// Default OAuth and backup credentials.
+//
+// This is a TEMPLATE file. Copy it to env_defaults.go and fill in real values:
+//   cp env_defaults.go.example env_defaults.go
+//
+// The real env_defaults.go is gitignored and must NOT be committed.
+//
+// In CI, the workflow generates env_defaults.go from GitHub secrets.
+//
+// Required values:
+//   - GOOGLE_CLIENT_ID:       Google OAuth 2.0 client ID
+//   - GOOGLE_CLIENT_SECRET:   Google OAuth 2.0 client secret
+//   - UPSTASH_REDIS_URL:      Upstash Redis REST URL (rediss://...)
+//   - FIREBASE_PROJECT_ID:    Firebase project ID (optional, defaults to httptoolkitpro)
+const (
+	defaultGoogleClientID     = "YOUR_GOOGLE_CLIENT_ID"
+	defaultGoogleClientSecret = "YOUR_GOOGLE_CLIENT_SECRET"
+	defaultUpstashRedisURL    = "YOUR_UPSTASH_REDIS_URL"
+	defaultFirebaseProjectID  = "httptoolkitpro"
+)

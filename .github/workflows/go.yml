@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  # -------------------------------------------------------------------
+  # Build & test the standalone Go server on multiple OSes.
+  # -------------------------------------------------------------------
+  build:
+    name: Build & Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+          cache: true
+
+      - name: Generate env_defaults.go from secrets
+        shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          # Fall back to placeholders if secrets are not set (PRs from forks).
+          GID="${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}"
+          GSEC="${GOOGLE_CLIENT_SECRET:-YOUR_GOOGLE_CLIENT_SECRET}"
+          UURL="${UPSTASH_REDIS_URL:-YOUR_UPSTASH_REDIS_URL}"
+          FPID="${FIREBASE_PROJECT_ID:-httptoolkitpro}"
+          {
+            echo "package config"
+            echo ""
+            echo "const ("
+            echo "    defaultGoogleClientID     = \"$GID\""
+            echo "    defaultGoogleClientSecret = \"$GSEC\""
+            echo "    defaultUpstashRedisURL    = \"$UURL\""
+            echo "    defaultFirebaseProjectID  = \"$FPID\""
+            echo ")"
+          } > internal/config/env_defaults.go
+
+      - name: Build standalone server
+        run: go build -v -o htk-server ./cmd/htk-server
+
+      - name: Build MCP server
+        run: go build -v -o htk-mcp ./cmd/htk-mcp
+
+      - name: Build ctl client
+        run: go build -v -o htk-ctl ./cmd/htk-ctl
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Upload binaries
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: htk-binaries-${{ matrix.os }}
+          path: |
+            htk-server
+            htk-server.exe
+            htk-mcp
+            htk-mcp.exe
+            htk-ctl
+            htk-ctl.exe
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------------
+  # Build the Wails desktop app (Windows only — requires WebView2).
+  # -------------------------------------------------------------------
+  build-wails-windows:
+    name: Wails Desktop (Windows)
+    needs: build
+    runs-on: windows-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+          cache: true
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Generate env_defaults.go from secrets
+        shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          GID="${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}"
+          GSEC="${GOOGLE_CLIENT_SECRET:-YOUR_GOOGLE_CLIENT_SECRET}"
+          UURL="${UPSTASH_REDIS_URL:-YOUR_UPSTASH_REDIS_URL}"
+          FPID="${FIREBASE_PROJECT_ID:-httptoolkitpro}"
+          {
+            echo "package config"
+            echo ""
+            echo "const ("
+            echo "    defaultGoogleClientID     = \"$GID\""
+            echo "    defaultGoogleClientSecret = \"$GSEC\""
+            echo "    defaultUpstashRedisURL    = \"$UURL\""
+            echo "    defaultFirebaseProjectID  = \"$FPID\""
+            echo ")"
+          } > internal/config/env_defaults.go
+
+      - name: Build Wails desktop app
+        run: wails build -platform windows/amd64 -clean
+
+      - name: Upload desktop app
+        uses: actions/upload-artifact@v4
+        with:
+          name: HttpToolkit-Pro-Windows-Desktop
+          path: build/bin/HttpToolkit-Pro.exe
+          if-no-files-found: warn

@@ -1,0 +1,1 @@
+import{t as e}from"./react-DjOMyCbT.js";var t=e((e,t)=>({notifications:[],addNotification:(n,r,i=3e3)=>{let a=`${Date.now()}-${Math.random()}`;return e(e=>({notifications:[...e.notifications,{id:a,type:n,message:r}]})),setTimeout(()=>{t().removeNotification(a)},i),a},removeNotification:t=>{e(e=>({notifications:e.notifications.filter(e=>e.id!==t)}))}}));export{t};
