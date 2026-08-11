@@ -9,8 +9,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/Microsoft/go-winio"
 )
 
 func dockerHTTPClient() *http.Client {
@@ -33,7 +31,7 @@ func dialDockerDaemon(ctx context.Context, _, _ string) (net.Conn, error) {
 	case "unix":
 		return d.DialContext(ctx, "unix", addr.path)
 	case "npipe":
-		return winio.DialPipeContext(ctx, addr.path)
+		return dialNpipe(ctx, addr.path)
 	case "tcp":
 		return d.DialContext(ctx, "tcp", addr.host)
 	default:
