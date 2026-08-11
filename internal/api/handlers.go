@@ -340,8 +340,16 @@ func (s *Server) handleInterceptorSub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) >= 3 && parts[1] == "activate" {
+		if r.Method != http.MethodPost {
+			writeAPIError(w, http.StatusMethodNotAllowed, "activate requires POST")
+			return
+		}
 		var proxyPort int
 		_, _ = fmt.Sscan(parts[2], &proxyPort)
+		if proxyPort <= 0 {
+			writeAPIError(w, http.StatusBadRequest, "proxyPort is required")
+			return
+		}
 		var options map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&options)
 		result, err := s.interceptors.Activate(id, proxyPort, options)
@@ -353,8 +361,16 @@ func (s *Server) handleInterceptorSub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) >= 3 && parts[1] == "deactivate" {
+		if r.Method != http.MethodPost {
+			writeAPIError(w, http.StatusMethodNotAllowed, "deactivate requires POST")
+			return
+		}
 		var proxyPort int
 		_, _ = fmt.Sscan(parts[2], &proxyPort)
+		if proxyPort <= 0 {
+			writeAPIError(w, http.StatusBadRequest, "proxyPort is required")
+			return
+		}
 		var options map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&options)
 		result, err := s.interceptors.Deactivate(id, proxyPort, options)

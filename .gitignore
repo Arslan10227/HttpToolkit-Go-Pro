@@ -8,6 +8,9 @@
 bin/
 build/bin/
 
+# Wails generated resource object
+*.syso
+
 # Task runner cache
 .task/
 

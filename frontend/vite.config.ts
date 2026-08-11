@@ -37,7 +37,7 @@ function copyPrebuiltUI() {
       }
 
       // Copy root-level static files (favicon, logos, manifest)
-      for (const file of ["favicon.png", "logo.png", "logo-icon.png", "manifest.json"]) {
+      for (const file of ["favicon.png", "logo.png", "logo-icon.png", "manifest.json", "dark_logo.png", "light_logo.png", "har_logo.png"]) {
         const src = join(assetsDir, file);
         if (existsSync(src)) {
           copyFileSync(src, join(distDir, file));
@@ -61,6 +61,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    minify: false,
     rollupOptions: {
       input: {
         shellApi: resolve(__dirname, "src/shellApi.ts"),

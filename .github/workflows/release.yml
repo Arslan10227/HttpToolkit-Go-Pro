@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+          cache: true
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Generate env_defaults.go from secrets
+        shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          GID="${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}"
+          GSEC="${GOOGLE_CLIENT_SECRET:-YOUR_GOOGLE_CLIENT_SECRET}"
+          UURL="${UPSTASH_REDIS_URL:-YOUR_UPSTASH_REDIS_URL}"
+          FPID="${FIREBASE_PROJECT_ID:-httptoolkitpro}"
+          {
+            echo "package config"
+            echo ""
+            echo "const ("
+            echo "    defaultGoogleClientID     = \"$GID\""
+            echo "    defaultGoogleClientSecret = \"$GSEC\""
+            echo "    defaultUpstashRedisURL    = \"$UURL\""
+            echo "    defaultFirebaseProjectID  = \"$FPID\""
+            echo ")"
+          } > internal/config/env_defaults.go
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build (verify compilation)
+        run: go build -v .
+
+  build-and-release:
+    name: Build & Release (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact_glob: 'bin/HttpToolkit-Pro*.exe'
+          - os: macos-latest
+            platform: darwin
+            artifact_glob: 'bin/HttpToolkit-Pro*'
+          - os: ubuntu-latest
+            platform: linux
+            artifact_glob: 'bin/HttpToolkit-Pro*'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install NSIS (Windows packaging)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+
+      - name: Generate env_defaults.go from secrets
+        shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          GID="${GOOGLE_CLIENT_ID:-YOUR_GOOGLE_CLIENT_ID}"
+          GSEC="${GOOGLE_CLIENT_SECRET:-YOUR_GOOGLE_CLIENT_SECRET}"
+          UURL="${UPSTASH_REDIS_URL:-YOUR_UPSTASH_REDIS_URL}"
+          FPID="${FIREBASE_PROJECT_ID:-httptoolkitpro}"
+          {
+            echo "package config"
+            echo ""
+            echo "const ("
+            echo "    defaultGoogleClientID     = \"$GID\""
+            echo "    defaultGoogleClientSecret = \"$GSEC\""
+            echo "    defaultUpstashRedisURL    = \"$UURL\""
+            echo "    defaultFirebaseProjectID  = \"$FPID\""
+            echo ")"
+          } > internal/config/env_defaults.go
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm install
+
+      - name: Generate Wails bindings
+        run: wails3 generate bindings
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Build desktop app
+        run: wails3 build
+
+      - name: Package desktop app
+        if: matrix.os == 'windows-latest'
+        run: wails3 package
+
+      - name: Collect artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp ${{ matrix.artifact_glob }} dist/ 2>/dev/null || true
+          ls -la dist/
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: dist/*
+          fail_on_unmatched_files: false

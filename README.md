@@ -12,7 +12,7 @@
   <p>
     <a href="https://github.com/Arslan10227/HttpToolkit-Go-Pro/actions"><img src="https://github.com/Arslan10227/HttpToolkit-Go-Pro/actions/workflows/go.yml/badge.svg" alt="CI"></a>
     <img src="https://img.shields.io/badge/Go-1.26+-00ADD8" alt="Go version">
-    <img src="https://img.shields.io/badge/Wails-v2-red" alt="Wails v2">
+    <img src="https://img.shields.io/badge/Wails-v3%20beta-red" alt="Wails v3 beta">
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License">
   </p>
 </div>
@@ -117,7 +117,7 @@ The desktop app uses [Wails v2](https://wails.io) to wrap the Go server in a Web
 
 - **Go** 1.26+ (for building from source)
 - **WebView2** runtime (Windows, for desktop app)
-- **Wails v2** CLI (for desktop builds only): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- **Wails v3** CLI (for desktop builds only): `go install github.com/wailsapp/wails/v3/cmd/wails3@latest`
 
 ### Build the Standalone Server
 
@@ -141,19 +141,19 @@ go build -o htk-server ./cmd/htk-server
 
 ```bash
 # Install Wails CLI (if not already installed)
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
+go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
 # Build the desktop app
-wails build -platform windows/amd64
+wails3 build
 
-# Output: build/bin/HttpToolkit-Pro.exe
+# Output: bin/HttpToolkit-Pro.exe
 ```
 
 ### Development Mode
 
 ```bash
 # Run with hot reload
-wails dev
+wails3 dev
 
 # Or run standalone server with verbose logging
 ./htk-server -v

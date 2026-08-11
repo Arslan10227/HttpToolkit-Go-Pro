@@ -1,6 +1,7 @@
 package mitm
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,15 @@ func (s *Server) serveAmiusingFallback(w io.Writer, req *http.Request, id string
 			StatusCode: http.StatusOK,
 			Body:       "intercepted",
 			Headers:    map[string]string{"Content-Type": "text/plain"},
+		}, start)
+		return
+	}
+	if path == "/certificate" {
+		writeFixedResponse(w, id, s.events, rules.StepAction{
+			Kind:       "fixed-response",
+			StatusCode: http.StatusOK,
+			Body:       s.certs.CertPEM(),
+			Headers:    map[string]string{"Content-Type": "text/plain; charset=utf-8"},
 		}, start)
 		return
 	}
@@ -88,4 +98,56 @@ function fail() {
 func isAmiusingHost(host string) bool {
 	host = strings.ToLower(host)
 	return host == "amiusing.httptoolkit.tech" || strings.HasSuffix(host, ".amiusing.httptoolkit.tech")
+}
+
+// serveAndroidFallback intercepts requests to android.httptoolkit.tech that the
+// official HTTP Toolkit Android app makes after scanning a QR code. It serves the
+// proxy's CA certificate so the app can verify & trust the proxy before tunelling.
+func (s *Server) serveAndroidFallback(w io.Writer, req *http.Request, id string) {
+	start := time.Now()
+	path := req.URL.Path
+
+	if path == "/certificate" {
+		writeFixedResponse(w, id, s.events, rules.StepAction{
+			Kind:       "fixed-response",
+			StatusCode: http.StatusOK,
+			Body:       s.certs.CertPEM(),
+			Headers:    map[string]string{"Content-Type": "text/plain; charset=utf-8"},
+		}, start)
+		return
+	}
+
+	if path == "/config" || path == "" || path == "/" {
+		body, err := json.Marshal(map[string]string{
+			"certificate": s.certs.CertPEM(),
+		})
+		if err != nil {
+			writeFixedResponse(w, id, s.events, rules.StepAction{
+				Kind:       "fixed-response",
+				StatusCode: http.StatusInternalServerError,
+				Body:       `{"error":"failed to build config"}`,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+			}, start)
+			return
+		}
+		writeFixedResponse(w, id, s.events, rules.StepAction{
+			Kind:       "fixed-response",
+			StatusCode: http.StatusOK,
+			Body:       string(body),
+			Headers:    map[string]string{"Content-Type": "application/json"},
+		}, start)
+		return
+	}
+
+	writeFixedResponse(w, id, s.events, rules.StepAction{
+		Kind:       "fixed-response",
+		StatusCode: http.StatusNotFound,
+		Body:       "not found",
+		Headers:    map[string]string{"Content-Type": "text/plain"},
+	}, start)
+}
+
+func isAndroidHost(host string) bool {
+	host = strings.ToLower(host)
+	return host == "android.httptoolkit.tech" || strings.HasSuffix(host, ".android.httptoolkit.tech")
 }

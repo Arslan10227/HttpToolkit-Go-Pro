@@ -366,6 +366,10 @@ func (s *Server) serveMITMRequest(w io.Writer, req *http.Request, id string) {
 		s.serveAmiusingFallback(w, req, id)
 		return
 	}
+	if isAndroidHost(req.URL.Host) || isAndroidHost(req.Host) {
+		s.serveAndroidFallback(w, req, id)
+		return
+	}
 	urlStr := req.URL.String()
 	if req.URL.Scheme == "" {
 		urlStr = "http://" + req.Host + req.URL.Path

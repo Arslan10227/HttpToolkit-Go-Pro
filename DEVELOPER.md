@@ -11,7 +11,7 @@ This document is for developers who want to understand, extend, or contribute to
 | Tool | Version | Purpose |
 |------|---------|---------|
 | **Go** | 1.26+ | Build the Go backend |
-| **Wails CLI** | v2 | Build the desktop app (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`) |
+| **Wails CLI** | v3 beta | Build the desktop app (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`) |
 | **WebView2** | Latest | Windows desktop runtime (pre-installed on Windows 11) |
 | **Node.js** | v20+ | Only needed if you want to rebuild the web UI assets |
 | **Git** | 2.40+ | Version control |
@@ -37,7 +37,7 @@ go test ./...
 go run ./cmd/htk-server -v
 
 # Run the Wails desktop app in dev mode (hot reload)
-wails dev
+wails3 dev
 ```
 
 ### Verbose Logging
@@ -47,7 +47,7 @@ Pass `-v` or `--verbose` to enable verbose logging:
 ```bash
 ./htk-server -v
 # or
-wails dev -v
+wails3 dev -v
 ```
 
 Log files are written to `logs/httptoolkit.log` (or the platform's config directory in production).
@@ -289,7 +289,7 @@ The Go code embeds this file at build time via `//go:embed` in `internal/config/
 | Issue | Fix |
 |-------|-----|
 | `config: env_defaults.go not found` | Run `cp internal/config/env_defaults.go.example internal/config/env_defaults.go` |
-| `wails: command not found` | Run `go install github.com/wailsapp/wails/v2/cmd/wails@latest` |
+| `wails3: command not found` | Run `go install github.com/wailsapp/wails/v3/cmd/wails3@latest` |
 | WebView2 not found | Install [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) |
 | Port already in use | Set `HTK_SERVER_PORT` and `HTK_ADMIN_PORT` env vars |
 | Certificate trust errors | Use the "Install Certificate" button in Settings, or manually trust the CA |
@@ -334,14 +334,15 @@ go test -v ./internal/proxy/mitm/... -run Integration
 
 ## CI Pipeline
 
-The CI workflow (`.github/workflows/go.yml`) runs on every push and PR:
+The CI workflow (`.github/workflows/go.yml`) runs on every push and PR. The release workflow (`.github/workflows/release.yml`) is triggered by `v*` tags and automatically builds and publishes desktop binaries.
 
 ### Jobs
 
 | Job | OS | What it does |
 |-----|----|-------------|
-| `build` | Ubuntu, Windows, macOS | Builds `htk-server`, `htk-mcp`, `htk-ctl`; runs `go test ./...` |
-| `build-wails-windows` | Windows | Builds the Wails desktop app (`HttpToolkit-Pro.exe`) |
+| `test` | Ubuntu, Windows, macOS | Builds `htk-server`, `htk-mcp`, `htk-ctl`; runs `go test ./...` |
+| `build-desktop` | Ubuntu, Windows, macOS | Builds the Wails v3 desktop app via `wails3 build` |
+| `build-and-release` | Ubuntu, Windows, macOS | Triggered by tags — builds, packages, and uploads release assets |
 
 ### Secrets
 
@@ -357,30 +358,24 @@ Built binaries are uploaded as GitHub Actions artifacts and can be downloaded fr
 
 ## Releasing
 
-1. **Update `version.yaml`** with the new version number:
-
-```yaml
-version: "1.1.0"
-```
+1. **Update `version.yaml`** and `CHANGELOG.md`** with the new version number and release notes.
 
 2. **Commit and push** to `main`:
 
 ```bash
-git add internal/config/version.yaml
-git commit -m "Release v1.1.0"
+git add internal/config/version.yaml CHANGELOG.md
+git commit -m "Release vX.Y.Z"
 git push origin main
 ```
 
-3. **Tag the release**:
+3. **Tag the release** and push the tag:
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
-4. **Create a GitHub Release** from the tag, attaching the CI-built artifacts.
-
-5. CI will automatically build and upload binaries as artifacts. Download them from the Actions run and attach to the release.
+4. The `.github/workflows/release.yml` action will run automatically, build the Wails v3 desktop app for Windows, macOS and Linux, and publish the binaries to a GitHub Release.
 
 ---
 

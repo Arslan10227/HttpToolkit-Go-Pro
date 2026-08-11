@@ -25,7 +25,7 @@ type Registry struct {
 	certs        *cert.Manager
 	interceptors map[string]Interceptor
 	order        []string
-	mu           sync.Mutex
+	mu           sync.RWMutex
 }
 
 func NewRegistry(cfg *config.Config, spki string, certs *cert.Manager) *Registry {
@@ -45,6 +45,9 @@ func NewRegistry(cfg *config.Config, spki string, certs *cert.Manager) *Registry
 }
 
 func (r *Registry) List(proxyPort int) []map[string]any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -129,6 +132,9 @@ func (r *Registry) Metadata(id string) (any, error) {
 }
 
 func (r *Registry) Activate(id string, proxyPort int, options map[string]any) (map[string]any, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	i, ok := r.interceptors[id]
 	if !ok {
 		return nil, fmt.Errorf("unknown interceptor %s", id)
@@ -141,6 +147,9 @@ func (r *Registry) Activate(id string, proxyPort int, options map[string]any) (m
 }
 
 func (r *Registry) Deactivate(id string, proxyPort int, options map[string]any) (map[string]any, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	i, ok := r.interceptors[id]
 	if !ok {
 		return nil, fmt.Errorf("unknown interceptor %s", id)
@@ -153,6 +162,9 @@ func (r *Registry) Deactivate(id string, proxyPort int, options map[string]any) 
 }
 
 func (r *Registry) DeactivateAll() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	for _, i := range r.interceptors {
 		_ = i.Deactivate(0, nil)
 	}
