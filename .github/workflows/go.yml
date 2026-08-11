@@ -102,6 +102,10 @@ jobs:
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
+      - name: Install NSIS (Windows packaging)
+        if: matrix.os == 'windows-latest'
+        run: choco install nsis -y
+
       - name: Generate env_defaults.go from secrets
         shell: bash
         env:
